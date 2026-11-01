@@ -44,7 +44,8 @@ jobs:
               url = r.get("download_url") or r.get("url")
               print("RES", name, url, r.get("modified") or r.get("last_modified") or r.get("issued"))
               if name and (name.lower().endswith(".csv") and "_ch" in name.lower() and "pr" in name.lower()
-                           or name.startswith("Archiv_Praemien_") or name.startswith("Erläuterungen")):
+                           or name.startswith("Archiv_Praemien_") or name.startswith("Erläuterungen")
+                           or name in ("Einzugsgebiete.csv", "Tarife.csv")):
                   rc = subprocess.run(["curl", "-fsSL", "--retry", "3", "-A", UA, "-o", name, url]).returncode
                   print("DL", "OK" if rc == 0 else f"FEHLT({rc})", name)
           EOF
@@ -54,18 +55,28 @@ jobs:
         if: always()
         run: |
           cd roh
-          # Archive: nur die Schweizer Prämiendatei je Jahr behalten (ab 2018), Rest weg
+          # Archive: je Jahr (ab 2018) nur Schweizer Prämien + Einzugsgebiete behalten
+          pip install -q pandas openpyxl
           for z in Archiv_Praemien_*.zip; do
             j=$(echo "$z" | grep -o '20[0-9][0-9]')
             if [ "$j" -ge 2018 ]; then
-              unzip -l "$z" | awk '{print $4}' | grep -i '\.csv$' | sed "s/^/  $j: /"
+              echo "== $z"; unzip -Z1 "$z" | sed 's/^/   /'
               mkdir -p "x$j" && unzip -q -o "$z" -d "x$j"
-              f=$(find "x$j" -iname '*.csv' | grep -i 'pr' | grep -iv '_eu' | grep -iv 'chen' | head -1)
+              # verschachtelte ZIPs ebenfalls entpacken
+              find "x$j" -iname '*.zip' -exec unzip -q -o {} -d "x$j" \;
+              f=$(find "x$j" -iname 'pr*mien*ch*.csv' ! -iname '*eu*' | head -1)
+              if [ -z "$f" ]; then
+                x=$(find "x$j" -iname 'pr*mien*ch*.xls*' ! -iname '*eu*' | head -1)
+                [ -n "$x" ] && python3 -c "import pandas as pd,sys; pd.read_excel(sys.argv[1],dtype=str).to_csv(sys.argv[2],index=False)" "$x" "x$j/conv.csv" && f="x$j/conv.csv"
+              fi
               [ -n "$f" ] && cp "$f" "praemien_$j.csv" && echo "  -> praemien_$j.csv aus $f"
+              e=$(find "x$j" -iname 'einzugsgebiete*.csv' | head -1)
+              [ -n "$e" ] && cp "$e" "einzugsgebiete_$j.csv"
               rm -rf "x$j"
             fi
             rm "$z"
           done
+          [ -f Einzugsgebiete.csv ] && mv Einzugsgebiete.csv einzugsgebiete_aktuell.csv
           mv "Prämien_CH.csv" "praemien_aktuell.csv"
           for f in *.csv; do zip -q -9 "$f.zip" "$f" && rm "$f"; done
           ls -la
