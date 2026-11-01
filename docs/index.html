@@ -27,36 +27,13 @@
   <section class="einstieg">
     <h1>Wie viel zahlst du zu viel für die Grundversicherung?</h1>
 
-    <form id="formular" class="satz" autocomplete="off">
+    <form id="formular" class="satz" autocomplete="off" novalidate>
       <p>
         Ich wohne in
         <label class="feld feld-plz"><span class="sr">Postleitzahl</span>
           <input id="plz" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="3653" required></label>
         <span id="ort-wahl" hidden>
-          in der Gemeinde <label class="feld"><span class="sr">Gemeinde</span><select id="ort"></select></label></span>,
-        bin
-        <label class="feld feld-zahl"><span class="sr">Alter</span>
-          <input id="alter" type="number" min="0" max="120" value="40" required></label>
-        Jahre alt und habe
-        <label class="feld"><span class="sr">Franchise</span><select id="franchise"></select></label>
-        Franchise,
-        <label class="feld"><span class="sr">Unfalldeckung</span>
-          <select id="unfall">
-            <option value="1">mit</option>
-            <option value="0">ohne</option>
-          </select></label>
-        Unfalldeckung.
-      </p>
-      <p>
-        Heute bin ich bei
-        <label class="feld"><span class="sr">Eigene Kasse</span><select id="kasse"></select></label>
-        im Modell
-        <label class="feld"><span class="sr">Eigenes Modell</span>
-          <select id="kasse-modell">
-            <option value="B">Standard</option>
-            <option value="P">Hausarzt/HMO</option>
-            <option value="T">Telmed/andere</option>
-          </select></label>
+          in der Gemeinde <label class="feld"><span class="sr">Gemeinde</span><select id="ort"></select></label></span>
         und vergleiche mit
         <label class="feld"><span class="sr">Vergleichsmodell</span>
           <select id="vergleich">
@@ -64,9 +41,40 @@
             <option value="alle">allen Modellen</option>
           </select></label>.
       </p>
-      <button type="submit" class="los">Prämien vergleichen</button>
+
+      <ol id="personen" class="personen"></ol>
+
+      <div class="knoepfe">
+        <button type="button" id="plus" class="plus">Person hinzufügen</button>
+        <button type="submit" class="los">Prämien vergleichen</button>
+      </div>
       <p id="fehler" class="fehler" role="alert" hidden></p>
     </form>
+
+    <template id="person-vorlage">
+      <li class="person">
+        <p>
+          <span class="wer"></span>
+          <label class="feld feld-zahl"><span class="sr">Alter</span>
+            <input class="alter" type="number" min="0" max="120" value="40" required></label>
+          Jahre alt, mit
+          <label class="feld"><span class="sr">Franchise</span><select class="franchise"></select></label>
+          Franchise,
+          <label class="feld"><span class="sr">Unfalldeckung</span>
+            <select class="unfall"><option value="1">mit</option><option value="0">ohne</option></select></label>
+          Unfalldeckung, heute bei
+          <label class="feld"><span class="sr">Kasse heute</span><select class="kasse"></select></label>
+          im Modell
+          <label class="feld"><span class="sr">Modell heute</span>
+            <select class="modell">
+              <option value="B">Standard</option>
+              <option value="P">Hausarzt/HMO</option>
+              <option value="T">Telmed/andere</option>
+            </select></label>.
+        </p>
+        <button type="button" class="weg">Entfernen</button>
+      </li>
+    </template>
   </section>
 
   <section id="resultat" class="resultat" hidden aria-live="polite">
@@ -78,8 +86,9 @@
     <figure class="grat">
       <svg id="chart" role="img" aria-labelledby="chart-titel"></svg>
       <figcaption id="chart-titel">
-        <span class="leg leg-eigen">Deine Kasse</span>
+        <span class="leg leg-eigen">Heute</span>
         <span class="leg leg-best">Günstigste Kasse</span>
+        <span class="leg leg-eine" hidden>Eine Kasse für alle</span>
         <span class="leg leg-luecke">Mögliche Ersparnis</span>
         <span class="leg leg-prog">Schätzung</span>
       </figcaption>
@@ -87,10 +96,22 @@
 
     <dl class="summen" id="summen"></dl>
 
+    <div id="familie" hidden>
+      <h2>Pro Person</h2>
+      <div class="tabelle-rahmen">
+        <table class="rangliste pro-person">
+          <thead><tr><th scope="col">Person</th><th scope="col" class="zahl">Heute</th><th scope="col" class="zahl">Einzeln</th><th scope="col" class="zahl">Eine Kasse</th></tr></thead>
+          <tbody id="pro-person"></tbody>
+          <tfoot id="pro-person-summe"></tfoot>
+        </table>
+      </div>
+      <p class="anmerkung">Beträge in CHF pro Monat. «Einzeln»: jede Person bei der für sie günstigsten Kasse. «Eine Kasse»: alle bei derselben Kasse, inklusive Geschwisterrabatt, falls die Kasse einen gewährt.</p>
+    </div>
+
     <h2 id="rang-titel">Die günstigsten Kassen</h2>
     <div class="tabelle-rahmen">
       <table class="rangliste" aria-labelledby="rang-titel">
-        <thead><tr><th scope="col">#</th><th scope="col">Kasse</th><th scope="col">Modell</th><th scope="col" class="zahl">CHF pro Monat</th><th scope="col" class="zahl jahr-spalte">Pro Jahr</th></tr></thead>
+        <thead><tr><th scope="col">#</th><th scope="col">Kasse</th><th scope="col" id="rang-modell-kopf">Modell</th><th scope="col" class="zahl">CHF pro Monat</th><th scope="col" class="zahl jahr-spalte">Pro Jahr</th></tr></thead>
         <tbody id="rang"></tbody>
       </table>
     </div>
@@ -99,7 +120,7 @@
       <summary>Alle Jahre als Tabelle</summary>
       <div class="tabelle-rahmen">
         <table class="rangliste">
-          <thead><tr><th scope="col">Jahr</th><th scope="col">Günstigste</th><th scope="col" class="zahl">CHF/Mt.</th><th scope="col" class="zahl">Deine</th><th scope="col" class="zahl">Differenz/Jahr</th></tr></thead>
+          <thead><tr><th scope="col">Jahr</th><th scope="col">Günstigste</th><th scope="col" class="zahl">CHF/Mt.</th><th scope="col" class="zahl">Heute</th><th scope="col" class="zahl">Differenz/Jahr</th></tr></thead>
           <tbody id="jahre"></tbody>
         </table>
       </div>
@@ -108,10 +129,10 @@
 
   <section class="kleingedrucktes">
     <h2>Was die Zahlen bedeuten</h2>
-    <p>Die Prämien stammen aus dem offenen Datensatz «Krankenversicherungsprämien» des Bundesamts für Gesundheit (BAG), die Zuteilung der Gemeinden zu den Prämienregionen von priminfo.admin.ch. Sie gelten pro Monat, für Erwachsene ab 26, junge Erwachsene von 19 bis 25 und Kinder (Kindertarif K1). Angebote, die es nur in einzelnen Gemeinden gibt, werden nur dort angezeigt.</p>
+    <p>Die Prämien stammen aus dem offenen Datensatz «Krankenversicherungsprämien» des Bundesamts für Gesundheit (BAG), die Zuteilung der Gemeinden zu den Prämienregionen von priminfo.admin.ch. Sie gelten pro Monat, für Erwachsene ab 26, junge Erwachsene von 19 bis 25 und Kinder (Kindertarif K1). Angebote, die es nur in einzelnen Gemeinden gibt, werden nur dort angezeigt. Geschwisterrabatte (ab dem 2. oder 3. Kind bei derselben Kasse) sind eingerechnet, so wie die Kassen sie beim BAG eingereicht haben.</p>
     <p>Die Modelle sind in drei Gruppen zusammengefasst, weil das BAG die Bezeichnungen 2027 geändert hat: Standard (freie Arztwahl), Hausarzt/HMO und Telmed/andere (Telmed, digitale und flexible Modelle, Apothekenmodelle). Innerhalb einer Gruppe unterscheiden sich die Bedingungen der Kassen.</p>
     <p>Die mögliche Ersparnis der Vorjahre setzt voraus, dass du jedes Jahr zur günstigsten Kasse gewechselt hättest. Sie ist eine Obergrenze. Die Jahre nach dem aktuellen Prämienjahr schreiben das bisherige Durchschnittswachstum fort und sind keine Vorhersage.</p>
-    <p>Arbeitest du mindestens 8 Stunden pro Woche bei einem Arbeitgeber, bist du dort gegen Unfall versichert und kannst die Unfalldeckung weglassen. Prämienverbilligungen und Zusatzversicherungen sind nicht berücksichtigt. Für einen Wechsel auf 1. Januar muss deine Kündigung bis 30. November bei der bisherigen Kasse eintreffen.</p>
+    <p>Arbeitest du mindestens 8 Stunden pro Woche bei einem Arbeitgeber, bist du dort gegen Unfall versichert und kannst die Unfalldeckung weglassen. Prämienverbilligungen, Zusatzversicherungen und Familienrabatte ausserhalb der Grundversicherung sind nicht berücksichtigt. Für einen Wechsel auf 1. Januar muss deine Kündigung bis 30. November bei der bisherigen Kasse eintreffen.</p>
     <p class="stand" id="stand"></p>
   </section>
 </main>

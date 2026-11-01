@@ -153,3 +153,34 @@ h2 { font: 700 1.6rem/1.2 var(--titel); margin: 0 0 1rem; letter-spacing: -.01em
 .kleingedrucktes h2 { color: var(--fels); font-size: 1.25rem; }
 .kleingedrucktes p { margin: 0 0 1rem; }
 .stand { font-size: .9rem; }
+
+/* Personen */
+.personen { list-style: none; margin: 1rem 0 0; padding: 0; counter-reset: person; }
+.person { position: relative; padding: .9rem 0 .9rem 0; border-top: 1px solid var(--linie); }
+.person:last-child { border-bottom: 1px solid var(--linie); }
+.person p { margin: 0; }
+.person .wer { font-weight: 700; }
+.weg {
+  font: 400 .95rem var(--text); color: var(--nebel); background: none; border: 0;
+  padding: .25rem 0; margin-top: .35rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+.weg:hover { color: var(--gefahr); }
+.knoepfe { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: center; margin-top: 1.5rem; }
+.knoepfe .los { margin-top: 0; }
+.plus {
+  font: 700 1.05rem var(--text); color: var(--enzian); background: transparent;
+  border: 2px solid var(--enzian); border-radius: 999px; padding: .7rem 1.3rem; cursor: pointer;
+}
+.plus::before { content: "+"; margin-right: .45rem; font-size: 1.2em; line-height: 0; vertical-align: -.08em; }
+.plus:hover { background: var(--enzian); color: #fff; }
+.plus[disabled] { opacity: .4; cursor: not-allowed; background: transparent; color: var(--enzian); }
+
+/* Familie */
+#familie { margin-bottom: 2.5rem; }
+.pro-person td .kasse { display: block; font-size: .85rem; color: var(--nebel); }
+.pro-person tfoot td { font-weight: 700; border-top: 2px solid var(--fels); border-bottom: 0; }
+.pro-person td.best { color: var(--gletscher); font-weight: 700; }
+.anmerkung { font-size: .9rem; color: var(--nebel); margin: .75rem 0 0; max-width: 60ch; }
+.leg-eine::before { background: none; height: 0; border-top: 2px solid var(--fels); vertical-align: .2rem; }
+#chart .linie-eine { fill: none; stroke: var(--fels); stroke-width: 1.5; stroke-linejoin: round; opacity: .75; }
+.rangliste tr.eigen td.zahl { font-weight: 700; }

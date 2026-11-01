@@ -32,7 +32,8 @@ MODELL = {
     "PRAXIS": "P", "TAR-HAM": "P", "TAR-HMO": "P",
     "TEL_DIG": "T", "FLEX": "T", "PHARM": "T", "TAR-DIV": "T",
 }
-UNTERGRUPPE = {"K1", "J1", "E1"}
+# Kinder: K1 = ohne Rabatt, K3 = Rabatt ab 3. Kind, K4 = ab 2 Kindern für alle, K5 = ab 3 Kindern für alle
+UNTERGRUPPE = {"K1", "K3", "K4", "K5", "J1", "E1"}
 
 # Inzwischen fusionierte/aufgelöste Kassen (Quelle: BAG-Verzeichnis 1.1.2021, Mutationslisten 2024–2026)
 FRUEHERE = {
@@ -88,6 +89,8 @@ def normalisiere(df: pd.DataFrame) -> pd.DataFrame:
         "pr": pd.to_numeric(df["Prämie"].str.replace(",", "."), errors="coerce"),
     })
     d = d[d["ug"].isin(UNTERGRUPPE) | (d["ug"] == "")]
+    kind_rabatt = (d["akl"] == "K") & d["ug"].isin(["K3", "K4", "K5"])
+    d.loc[kind_rabatt, "akl"] = d.loc[kind_rabatt, "ug"]
     return d.dropna(subset=["jahr", "reg", "akl", "typ", "fr", "pr"]).astype({"jahr": int, "fr": int})
 
 
@@ -153,6 +156,7 @@ def baue(roh: Path):
     df = pd.concat(teile).drop_duplicates()
     # gleiche Jahre aus aktuell + Archiv nur einmal (Archiv hat Vorrang bei Doppel – identisch)
     df = df.drop_duplicates(["jahr", "nr", "kt", "reg", "akl", "u", "tarif", "typ", "fr"])
+    print("  Kinder-Rabattgruppen:", df[df["akl"].str.startswith("K")].groupby("akl").size().to_dict())
 
     einzug = {}
     for name, p in dateien(roh, "einzugsgebiete").items():
