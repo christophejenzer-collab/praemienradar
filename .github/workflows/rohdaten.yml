@@ -112,10 +112,16 @@ jobs:
           git init -q -b rohdaten
           git config user.name "praemienradar-bot"
           git config user.email "actions@users.noreply.github.com"
-          if git fetch -q --depth 1 "$REPO" rohdaten 2>/dev/null && git show FETCH_HEAD:pruefsumme.txt 2>/dev/null | cmp -s - pruefsumme.txt; then
-            echo "Rohdaten unverändert – nichts zu tun."
-            exit 0
+          if git fetch --depth 1 "$REPO" rohdaten && git show FETCH_HEAD:pruefsumme.txt > alt.txt 2>/dev/null; then
+            if cmp -s alt.txt pruefsumme.txt; then
+              echo "Rohdaten unverändert – nichts zu tun."
+              exit 0
+            fi
+            echo "Geänderte Dateien:"; diff alt.txt pruefsumme.txt | grep '^>' | awk '{print "  " $3, $4, $5, $6}'
+          else
+            echo "Noch keine Prüfsumme im Branch."
           fi
+          rm -f alt.txt
           git add -A
           git commit -q -m "Rohdaten $(date +%F)"
           git push -f "$REPO" rohdaten
