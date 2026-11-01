@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prämienradar</title>
+<meta name="description" content="Günstigste Grundversicherung nach Postleitzahl finden – mit Vergleich zur eigenen Kasse über die Jahre. Basierend auf den offiziellen BAG-Prämiendaten.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M2 26 L11 12 L16 18 L22 7 L30 26 Z' fill='%234B3BC8'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="demo-hinweis" class="hinweis" hidden>
+  Demo-Modus: Die Zahlen sind erfunden. Die echten BAG-Daten werden eingespielt, sobald die Daten-Action gelaufen ist.
+</div>
+
+<header class="kopf">
+  <a class="marke" href="./" aria-label="Prämienradar Startseite">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 26 L11 12 L16 18 L22 7 L30 26 Z"/></svg>
+    Prämienradar
+  </a>
+</header>
+
+<main>
+  <section class="einstieg">
+    <h1>Wie viel zahlst du zu viel für die Grundversicherung?</h1>
+
+    <form id="formular" class="satz" autocomplete="off">
+      <p>
+        Ich wohne in
+        <label class="feld feld-plz"><span class="sr">Postleitzahl</span>
+          <input id="plz" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="3653" required></label>
+        <span id="ort-wahl" hidden>
+          in der Gemeinde <label class="feld"><span class="sr">Gemeinde</span><select id="ort"></select></label></span>,
+        bin
+        <label class="feld feld-zahl"><span class="sr">Alter</span>
+          <input id="alter" type="number" min="0" max="120" value="40" required></label>
+        Jahre alt und habe
+        <label class="feld"><span class="sr">Franchise</span><select id="franchise"></select></label>
+        Franchise,
+        <label class="feld"><span class="sr">Unfalldeckung</span>
+          <select id="unfall">
+            <option value="1">mit</option>
+            <option value="0">ohne</option>
+          </select></label>
+        Unfalldeckung.
+      </p>
+      <p>
+        Heute bin ich bei
+        <label class="feld"><span class="sr">Eigene Kasse</span><select id="kasse"></select></label>
+        im Modell
+        <label class="feld"><span class="sr">Eigenes Modell</span>
+          <select id="kasse-modell">
+            <option value="B">Standard</option>
+            <option value="H">Hausarzt</option>
+            <option value="M">HMO</option>
+            <option value="D">Telmed/andere</option>
+          </select></label>
+        und vergleiche mit
+        <label class="feld"><span class="sr">Vergleichsmodell</span>
+          <select id="vergleich">
+            <option value="gleich">dem gleichen Modell</option>
+            <option value="alle">allen Modellen</option>
+          </select></label>.
+      </p>
+      <button type="submit" class="los">Prämien vergleichen</button>
+      <p id="fehler" class="fehler" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <section id="resultat" class="resultat" hidden aria-live="polite">
+    <div class="fazit">
+      <p class="fazit-zahl" id="fazit-zahl"></p>
+      <p class="fazit-text" id="fazit-text"></p>
+    </div>
+
+    <figure class="grat">
+      <svg id="chart" role="img" aria-labelledby="chart-titel"></svg>
+      <figcaption id="chart-titel">
+        <span class="leg leg-eigen">Deine Kasse</span>
+        <span class="leg leg-best">Günstigste Kasse</span>
+        <span class="leg leg-luecke">Mögliche Ersparnis</span>
+        <span class="leg leg-prog">Schätzung</span>
+      </figcaption>
+    </figure>
+
+    <dl class="summen" id="summen"></dl>
+
+    <h2 id="rang-titel">Die günstigsten Kassen</h2>
+    <div class="tabelle-rahmen">
+      <table class="rangliste" aria-labelledby="rang-titel">
+        <thead><tr><th scope="col">#</th><th scope="col">Kasse</th><th scope="col">Modell</th><th scope="col" class="zahl">CHF pro Monat</th><th scope="col" class="zahl jahr-spalte">Pro Jahr</th></tr></thead>
+        <tbody id="rang"></tbody>
+      </table>
+    </div>
+
+    <details class="jahre">
+      <summary>Alle Jahre als Tabelle</summary>
+      <div class="tabelle-rahmen">
+        <table class="rangliste">
+          <thead><tr><th scope="col">Jahr</th><th scope="col">Günstigste</th><th scope="col" class="zahl">CHF/Mt.</th><th scope="col" class="zahl">Deine</th><th scope="col" class="zahl">Differenz/Jahr</th></tr></thead>
+          <tbody id="jahre"></tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <section class="kleingedrucktes">
+    <h2>Was die Zahlen bedeuten</h2>
+    <p>Die Prämien stammen aus dem offenen Datensatz «Krankenversicherungsprämien» des Bundesamts für Gesundheit (BAG). Sie gelten pro Monat, für Erwachsene ab 26, Junge von 19 bis 25 und Kinder (erstes Kind).</p>
+    <p>Die mögliche Ersparnis der Vorjahre setzt voraus, dass du jedes Jahr zur günstigsten Kasse gewechselt hättest. Sie ist eine Obergrenze. Die Jahre nach dem aktuellen Prämienjahr schreiben das bisherige Durchschnittswachstum fort und sind keine Vorhersage.</p>
+    <p>Arbeitest du mindestens 8 Stunden pro Woche bei einem Arbeitgeber, bist du dort gegen Unfall versichert und kannst die Unfalldeckung weglassen. Prämienverbilligungen und Zusatzversicherungen sind nicht berücksichtigt. Für einen Wechsel auf 1. Januar muss deine Kündigung bis 30. November bei der bisherigen Kasse eintreffen.</p>
+    <p class="stand" id="stand"></p>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

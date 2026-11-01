@@ -1,0 +1,45 @@
+name: Prämiendaten aktualisieren
+
+on:
+  workflow_dispatch:
+  schedule:
+    # BAG publiziert die neuen Prämien Ende September -> Anfang und Mitte Oktober prüfen
+    - cron: "17 5 1,15 10 *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten
+        run: pip install pandas openpyxl xlrd
+
+      - name: BAG-Daten laden
+        env:
+          REGIONEN_URL: ${{ vars.REGIONEN_URL }}
+        run: python scripts/fetch_data.py
+
+      - name: JSON für die Webseite bauen
+        run: |
+          if ls data-src/Praemienregionen.* >/dev/null 2>&1; then
+            python scripts/build_data.py
+          else
+            echo "::warning::data-src/Praemienregionen.xlsx fehlt – Webseite bleibt im Demo-Modus."
+          fi
+
+      - name: Änderungen committen
+        run: |
+          git config user.name "praemienradar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data
+          git diff --cached --quiet && echo "Keine Änderungen." && exit 0
+          git commit -m "Prämiendaten aktualisiert ($(date +%F))"
+          git push
