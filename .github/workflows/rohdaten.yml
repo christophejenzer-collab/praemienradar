@@ -54,8 +54,21 @@ jobs:
         if: always()
         run: |
           cd roh
-          [ -d . ] && ls -la
-          for f in *.csv; do [ -f "$f" ] && zip -q -9 "$f.zip" "$f" && rm "$f"; done
+          # Archive: nur die Schweizer Prämiendatei je Jahr behalten (ab 2018), Rest weg
+          for z in Archiv_Praemien_*.zip; do
+            j=$(echo "$z" | grep -o '20[0-9][0-9]')
+            if [ "$j" -ge 2018 ]; then
+              unzip -l "$z" | awk '{print $4}' | grep -i '\.csv$' | sed "s/^/  $j: /"
+              mkdir -p "x$j" && unzip -q -o "$z" -d "x$j"
+              f=$(find "x$j" -iname '*.csv' | grep -i 'pr' | grep -iv '_eu' | grep -iv 'chen' | head -1)
+              [ -n "$f" ] && cp "$f" "praemien_$j.csv" && echo "  -> praemien_$j.csv aus $f"
+              rm -rf "x$j"
+            fi
+            rm "$z"
+          done
+          mv "Prämien_CH.csv" "praemien_aktuell.csv"
+          for f in *.csv; do zip -q -9 "$f.zip" "$f" && rm "$f"; done
+          ls -la
           git init -q -b rohdaten
           git config user.name "praemienradar-bot"
           git config user.email "actions@users.noreply.github.com"
