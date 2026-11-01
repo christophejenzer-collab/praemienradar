@@ -1,39 +1,41 @@
 name: Prämiendaten aktualisieren
 
+# Läuft automatisch, sobald "Rohdaten herunterladen" erfolgreich war (oder manuell):
+# baut aus dem Branch "rohdaten" die JSON-Dateien der Webseite neu und committet sie.
 on:
   workflow_dispatch:
-  schedule:
-    # BAG publiziert die neuen Prämien Ende September -> Anfang und Mitte Oktober prüfen
-    - cron: "17 5 1,15 10 *"
+  workflow_run:
+    workflows: ["Rohdaten herunterladen"]
+    types: [completed]
 
 permissions:
   contents: write
 
 jobs:
-  update:
+  bauen:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Abhängigkeiten
-        run: pip install pandas openpyxl xlrd
+        run: pip install pandas openpyxl
 
-      - name: BAG-Daten laden
-        env:
-          REGIONEN_URL: ${{ vars.REGIONEN_URL }}
-        run: python scripts/fetch_data.py
-
-      - name: JSON für die Webseite bauen
+      - name: Rohdaten holen
         run: |
-          if ls data-src/Praemienregionen.* >/dev/null 2>&1; then
-            python scripts/build_data.py
-          else
-            echo "::warning::data-src/Praemienregionen.xlsx fehlt – Webseite bleibt im Demo-Modus."
-          fi
+          git fetch --depth 1 origin rohdaten
+          mkdir -p data-src/roh
+          git archive origin/rohdaten | tar -x -C data-src/roh
+          ls -la data-src/roh
+
+      - name: JSON bauen
+        run: python scripts/build_data.py
 
       - name: Änderungen committen
         run: |

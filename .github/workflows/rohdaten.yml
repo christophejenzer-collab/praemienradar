@@ -4,6 +4,9 @@ name: Rohdaten herunterladen
 # damit sie geprüft und lokal verarbeitet werden können.
 on:
   workflow_dispatch:
+  schedule:
+    # BAG publiziert die neuen Prämien Ende September -> Anfang und Mitte Oktober holen
+    - cron: "17 5 2,16 10 *"
 
 permissions:
   contents: write
@@ -18,9 +21,20 @@ jobs:
           mkdir -p roh && cd roh
           hole() { curl -fsSL --retry 3 -A "praemienradar" -o "$2" "$1" && echo "OK  $2 ($(du -h "$2" | cut -f1))" || echo "FEHLT $1"; }
 
-          hole https://www.priminfo.admin.ch/downloads/praemienregionen-2027.xlsx praemienregionen-2027.xlsx
-          hole https://www.priminfo.admin.ch/downloads/praemienregionen_2026.xlsx praemienregionen-2026.xlsx
-          hole https://www.priminfo.admin.ch/downloads/zugelassene-krankenversicherer-2026-10.xlsx versicherer.xlsx
+          J=$(date +%Y); M=$(date +%-m)
+          [ "$M" -ge 9 ] && N=$((J+1)) || N=$J   # ab September gilt das Folgejahr als aktuell
+          for j in $N $((N-1)); do
+            for u in "praemienregionen-$j.xlsx" "praemienregionen_$j.xlsx"; do
+              [ -f "praemienregionen-$j.xlsx" ] || hole "https://www.priminfo.admin.ch/downloads/$u" "praemienregionen-$j.xlsx" || true
+            done
+          done
+          find . -maxdepth 1 -type f -size 0 -delete
+          for j in $J $((J-1)); do
+            for m in 12 11 10 09 08 07 06 05 04 03 02 01 01-01; do
+              [ -f versicherer.xlsx ] && break 2
+              curl -fsSL -A "praemienradar" -o versicherer.xlsx "https://www.priminfo.admin.ch/downloads/zugelassene-krankenversicherer-$j-$m.xlsx" 2>/dev/null && echo "OK versicherer $j-$m" || rm -f versicherer.xlsx
+            done
+          done
 
           UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
           for api in "https://ckan.opendata.swiss/api/3/action/package_show?id=health-insurance-premiums" \

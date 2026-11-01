@@ -1,7 +1,7 @@
 "use strict";
 /* Prämienradar – rechnet komplett im Browser mit den vorbereiteten BAG-Daten (docs/data). */
 
-const MODELL = { B: "Standard", H: "Hausarzt", M: "HMO", D: "Telmed/andere" };
+const MODELL = { B: "Standard", P: "Hausarzt/HMO", T: "Telmed/andere" };
 const FR_ERW = [300, 500, 1000, 1500, 2000, 2500];
 const FR_KIN = [0, 100, 200, 300, 400, 500, 600];
 const PROGNOSE_JAHRE = 3;
@@ -38,7 +38,8 @@ function orteSetzen() {
 }
 
 function kassenSetzen() {
-  const opts = Object.entries(META.kassen).sort((a, b) => a[1].localeCompare(b[1], "de"));
+  const aktiv = META.aktiv || Object.keys(META.kassen);
+  const opts = aktiv.map((nr) => [nr, META.kassen[nr]]).sort((a, b) => a[1].localeCompare(b[1], "de"));
   $("kasse").innerHTML = `<option value="">keiner bestimmten Kasse</option>` +
     opts.map(([nr, n]) => `<option value="${nr}">${esc(n)}</option>`).join("");
 }
@@ -85,7 +86,9 @@ function fehler(text) {
 }
 
 /* ---------- Rechnen ---------- */
-function rechnen(daten, f) {
+function rechnen(datei, f, bfs) {
+  const daten = datei.d, gebiete = datei.e || [];
+  const erhaeltlich = (r) => r.length < 4 || gebiete[r[3]].includes(bfs);
   const akl = f.alter <= 18 ? "K" : f.alter <= 25 ? "J" : "E";
   const key = `${akl}|${f.unfall}|${f.franchise}`;
   const typ = f.vergleich === "gleich" ? f.kasseModell : null;
@@ -93,17 +96,17 @@ function rechnen(daten, f) {
 
   const verlauf = [];
   for (const j of jahre) {
-    const liste = daten[j][key] || [];
+    const liste = (daten[j][key] || []).filter(erhaeltlich);
     const pool = typ ? liste.filter((r) => r[1] === typ) : liste;
     if (!pool.length) continue;
     const best = pool.reduce((a, b) => (b[2] < a[2] ? b : a));
-    const eigen = f.kasse ? liste.find((r) => r[0] === f.kasse && r[1] === f.kasseModell) : null;
+    const eigen = f.kasse ? liste.filter((r) => r[0] === f.kasse && r[1] === f.kasseModell).sort((a, b) => a[2] - b[2])[0] : null;
     verlauf.push({ jahr: j, best, eigen: eigen ? eigen[2] : null });
   }
   if (!verlauf.length) return null;
 
   const aktuell = verlauf[verlauf.length - 1];
-  const liste = daten[aktuell.jahr][key] || [];
+  const liste = (daten[aktuell.jahr][key] || []).filter(erhaeltlich);
   const pool = typ ? liste.filter((r) => r[1] === typ) : liste;
   const proKasse = new Map();
   for (const r of [...pool].sort((a, b) => a[2] - b[2])) if (!proKasse.has(r[0])) proKasse.set(r[0], r);
@@ -287,14 +290,14 @@ async function vergleichen(ev) {
   const orte = PLZ[f.plz];
   if (!orte) return fehler(`Die Postleitzahl ${f.plz} ist nicht im Verzeichnis der Prämienregionen.`);
   if (!(f.alter >= 0 && f.alter <= 120)) return fehler("Gib ein Alter zwischen 0 und 120 ein.");
-  const [, kt, reg] = ortWahl(orte, f.ort);
+  const [, kt, reg, bfs] = ortWahl(orte, f.ort);
   const datei = `${kt}-${reg}`;
   try {
     regionCache[datei] ??= await json(`data/p/${datei}.json`);
   } catch {
     return fehler(`Für die Prämienregion ${kt} ${reg} sind keine Daten vorhanden.`);
   }
-  const e = rechnen(regionCache[datei], f);
+  const e = rechnen(regionCache[datei], f, bfs);
   if (!e) return fehler("Für diese Kombination gibt es keine Prämien. Prüfe Franchise und Modell.");
   urlSchreiben(f);
   letztesErgebnis = e;
