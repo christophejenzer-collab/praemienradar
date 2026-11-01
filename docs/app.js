@@ -122,6 +122,50 @@ function urlLesen() {
   return true;
 }
 
+/* Standort -> PLZ über den Geodienst des Bundes (swisstopo, Amtliches Ortschaftenverzeichnis) */
+function plzAusAntwort(daten) {
+  for (const r of (daten && daten.results) || []) {
+    const a = r.attributes || r.properties || {};
+    for (const k of ["plz", "plz4", "postleitzahl", "zip"]) {
+      const m = String(a[k] ?? "").match(/\b(\d{4})\b/);
+      if (m) return m[1];
+    }
+    const m = String(r.label || a.label || "").match(/\b(\d{4})\b/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function standortVerwenden() {
+  const info = $("standort-info"), knopf = $("standort");
+  if (!("geolocation" in navigator)) { info.textContent = "Dein Browser kann den Standort nicht ermitteln."; return; }
+  knopf.disabled = true;
+  info.textContent = "Standort wird ermittelt …";
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { longitude: lon, latitude: lat } = pos.coords;
+    const url = "https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometryType=esriGeometryPoint" +
+      `&geometry=${lon},${lat}&sr=4326&layers=all:ch.swisstopo-vd.ortschaftenverzeichnis_plz` +
+      "&tolerance=0&returnGeometry=false&imageDisplay=100,100,96" +
+      `&mapExtent=${lon - 0.01},${lat - 0.01},${lon + 0.01},${lat + 0.01}&lang=de`;
+    try {
+      const r = await fetch(url);
+      const plz = plzAusAntwort(await r.json());
+      if (!plz) throw new Error("keine PLZ");
+      if (!PLZ[plz]) { info.textContent = `Dein Standort hat die PLZ ${plz}, die nicht im Verzeichnis der Prämienregionen steht.`; return; }
+      $("plz").value = plz;
+      orteSetzen();
+      info.textContent = `PLZ ${plz} übernommen.`;
+    } catch {
+      info.textContent = "Die PLZ konnte nicht bestimmt werden. Gib sie bitte von Hand ein.";
+    } finally {
+      knopf.disabled = false;
+    }
+  }, (err) => {
+    knopf.disabled = false;
+    info.textContent = err.code === 1 ? "Standortzugriff abgelehnt. Gib die PLZ von Hand ein." : "Der Standort ist gerade nicht verfügbar.";
+  }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
+}
+
 function fehler(text) {
   $("fehler").textContent = text;
   $("fehler").hidden = !text;
@@ -512,7 +556,8 @@ async function start() {
   }
   $("demo-hinweis").hidden = !META.demo;
   $("stand").textContent = `Prämienjahre ${META.jahre[0]} bis ${META.jahre.at(-1)}, Daten aufbereitet am ${new Date(META.stand).toLocaleDateString("de-CH")}.`;
-  $("plz").addEventListener("input", orteSetzen);
+  $("plz").addEventListener("input", () => { orteSetzen(); $("standort-info").textContent = ""; });
+  $("standort").addEventListener("click", standortVerwenden);
   $("plus").addEventListener("click", () => {
     const li = personHinzu();
     li.querySelector(".alter").focus();
@@ -522,6 +567,6 @@ async function start() {
   let t;
   addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => letztesErgebnis && zeichnen(letztesErgebnis, false), 150); });
   if (urlLesen()) vergleichen();
-  else personHinzu();
+  else { orteSetzen(); personHinzu(); }
 }
 start();

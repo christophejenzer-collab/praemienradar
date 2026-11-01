@@ -26,11 +26,22 @@ Geprüft: Die günstigste Prämie 2027 (Erwachsene, Franchise 300, Standard, mit
 | `.github/workflows/rohdaten.yml` | lädt jeden Oktober die BAG-Dateien in den Branch `rohdaten` |
 | `.github/workflows/daten-update.yml` | baut danach die Webseiten-Daten neu und committet sie |
 
+## Funktionen
+
+- PLZ eingeben (Standard 3600 Thun) oder «Meinen Standort verwenden» (PLZ über den Geodienst des Bundes, api3.geo.admin.ch)
+- bis 5 Personen: Alter, Franchise, Unfalldeckung, heutige Kasse und Modell je Person
+- Vergleich **heute** / **einzeln** (jede Person bei der für sie günstigsten Kasse) / **eine Kasse für alle** – die Differenz ist der Preis für weniger Admin-Aufwand
+- Geschwisterrabatte aus den BAG-Daten: K3 (ab dem 3. Kind), K4 (ab 2 Kindern für alle), K5 (ab 3 Kindern für alle), nur bei derselben Kasse
+- Verlauf 2018 bis heute und Schätzung für 3 Jahre; Ergebnis als Link teilbar
+
 ## Lokal
 
 ```bash
+python kk_vergleich.py                                   # PLZ 3600, eine Person
 python kk_vergleich.py 3653 --alter 45 --franchise 2500 --unfall nein --kasse CSS
-cd docs && python -m http.server           # Webseite lokal: http://localhost:8000
+python kk_vergleich.py 3653 --person "45,2500,nein,CSS" --person "43,2500,nein,CSS" \
+       --person "12,0,ja,CSS" --person "9,0,ja,CSS" --person "6,0,ja,CSS"
+cd docs && python -m http.server                         # Webseite lokal: http://localhost:8000
 
 # Daten selbst neu bauen
 git fetch origin rohdaten && mkdir -p data-src/roh && git archive origin/rohdaten | tar -x -C data-src/roh
@@ -44,6 +55,7 @@ pip install pandas openpyxl && python scripts/build_data.py
 - Die heutige Regionenzuteilung wird auf alle Jahre angewendet.
 - Modelle in drei Gruppen (Standard, Hausarzt/HMO, Telmed/andere), weil das BAG die Codes 2027 geändert hat.
 - 2024: Tarife Januar–August (das BAG führt für 2024 zwei Stände).
-- Prämienverbilligung und Zusatzversicherungen sind nicht berücksichtigt.
+- Familie «einzeln»: Erwachsene je bei ihrer günstigsten Kasse; Kinder entweder je einzeln oder alle zusammen bei einer Kasse (Geschwisterrabatt). Als «3. Kind» gilt das jüngste.
+- Prämienverbilligung, Zusatzversicherungen und deren Familienrabatte sind nicht berücksichtigt.
 
 Keine Beratung. Massgebend sind die Prämien der Versicherer bzw. [priminfo.admin.ch](https://www.priminfo.admin.ch).

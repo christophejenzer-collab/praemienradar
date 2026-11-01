@@ -31,7 +31,7 @@
       <p>
         Ich wohne in
         <label class="feld feld-plz"><span class="sr">Postleitzahl</span>
-          <input id="plz" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="3653" required></label>
+          <input id="plz" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="3600" required></label>
         <span id="ort-wahl" hidden>
           in der Gemeinde <label class="feld"><span class="sr">Gemeinde</span><select id="ort"></select></label></span>
         und vergleiche mit
@@ -40,6 +40,10 @@
             <option value="gleich">dem gleichen Modell</option>
             <option value="alle">allen Modellen</option>
           </select></label>.
+      </p>
+      <p class="standort-zeile">
+        <button type="button" id="standort" class="standort">Meinen Standort verwenden</button>
+        <span id="standort-info" class="standort-info" role="status"></span>
       </p>
 
       <ol id="personen" class="personen"></ol>

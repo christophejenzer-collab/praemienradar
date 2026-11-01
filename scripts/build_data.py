@@ -115,9 +115,10 @@ def lies_regionen(pfad: Path) -> dict:
     df = roh.iloc[kopf + 1:].copy()
     df.columns = ["bfs", "kt", "gemeinde", "reg", "bezirk", "plz", "ort"][: df.shape[1]]
     df = df.dropna(subset=["bfs", "plz"])
-    out = {}
+    out, ortschaft = {}, {}
     for _, r in df.iterrows():
         plz = str(r["plz"]).strip().split(".")[0]
+        ortschaft.setdefault(plz, set()).add(str(r.get("ort", "")).strip().lower())
         reg = re.search(r"(\d)\s*$", str(r["reg"]).strip())
         if not (plz.isdigit() and reg):
             continue
@@ -125,8 +126,10 @@ def lies_regionen(pfad: Path) -> dict:
         out.setdefault(plz, [])
         if e not in out[plz]:
             out[plz].append(e)
-    for v in out.values():
-        v.sort(key=lambda e: e[0])
+    # Gemeinde, die gleich heisst wie die PLZ-Ortschaft, zuerst (3600 -> Thun vor Hilterfingen)
+    for plz, v in out.items():
+        orte = ortschaft.get(plz, set())
+        v.sort(key=lambda e: (not any(e[0].lower() == o or e[0].lower().startswith(o + " ") for o in orte), e[0]))
     return out
 
 
