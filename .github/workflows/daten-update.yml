@@ -37,6 +37,17 @@ jobs:
       - name: JSON bauen
         run: python scripts/build_data.py
 
+      - name: Plausibilität prüfen
+        run: |
+          python3 - <<'EOF'
+          import json, glob, sys
+          m = json.load(open("docs/data/meta.json"))
+          regionen = glob.glob("docs/data/p/*.json")
+          print("Jahre", m["jahre"], "| Kassen aktiv", len(m["aktiv"]), "| Regionen", len(regionen))
+          if len(regionen) < 40 or len(m["aktiv"]) < 20 or len(m["jahre"]) < 5:
+              sys.exit("Unplausible Daten – nicht veröffentlichen.")
+          EOF
+
       - name: Änderungen committen
         run: |
           git config user.name "praemienradar-bot"

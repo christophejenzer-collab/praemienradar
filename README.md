@@ -23,8 +23,12 @@ Geprüft: Die günstigste Prämie 2027 (Erwachsene, Franchise 300, Standard, mit
 | `docs/data/` | aufbereitete Prämien als JSON, je Prämienregion eine Datei |
 | `scripts/build_data.py` | baut aus den Rohdaten die JSON-Dateien |
 | `kk_vergleich.py` | dieselbe Auswertung als Kommandozeilen-Tool (nur Python, keine Pakete) |
-| `.github/workflows/rohdaten.yml` | lädt jeden Oktober die BAG-Dateien in den Branch `rohdaten` |
-| `.github/workflows/daten-update.yml` | baut danach die Webseiten-Daten neu und committet sie |
+| `.github/workflows/rohdaten.yml` | prüft vom 15. September bis 31. Oktober täglich, sonst monatlich, ob das BAG neue Dateien publiziert hat, und lädt sie in den Branch `rohdaten` |
+| `.github/workflows/daten-update.yml` | baut danach die Webseiten-Daten neu, prüft sie auf Plausibilität und committet sie |
+
+## Zeitplan
+
+Die Kassen reichen ihre Prämien bis Ende Juli beim BAG ein; das BAG publiziert die genehmigten Prämien fürs Folgejahr Ende September. Ab dann stehen sie spätestens am nächsten Morgen auf der Webseite. Ein Wechsel ist möglich, wenn die Kündigung bis 30. November bei der Kasse eintrifft.
 
 ## Funktionen
 

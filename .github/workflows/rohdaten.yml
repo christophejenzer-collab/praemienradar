@@ -5,8 +5,12 @@ name: Rohdaten herunterladen
 on:
   workflow_dispatch:
   schedule:
-    # BAG publiziert die neuen Prämien Ende September -> Anfang und Mitte Oktober holen
-    - cron: "17 5 2,16 10 *"
+    # Das BAG publiziert die genehmigten Prämien fürs Folgejahr jeweils Ende September
+    # (Kündigungsfrist 30. November). Rund um die Publikation täglich prüfen,
+    # sonst monatlich (für nachträgliche Korrekturen wie 2024).
+    - cron: "17 4 15-30 9 *"          # 15.–30. September täglich
+    - cron: "17 4 * 10 *"             # Oktober täglich
+    - cron: "17 4 1 1-8,11,12 *"      # übrige Monate am 1.
 
 permissions:
   contents: write
@@ -65,8 +69,7 @@ jobs:
           EOF
           ls -la
 
-      - name: Grosse CSV packen und in Branch rohdaten pushen
-        if: always()
+      - name: Prüfen, packen und in Branch rohdaten pushen
         run: |
           cd roh
           # Archive: je Jahr (ab 2018) nur Schweizer Prämien + Einzugsgebiete behalten
@@ -91,12 +94,29 @@ jobs:
             rm "$z"
           done
           [ -f Einzugsgebiete.csv ] && mv Einzugsgebiete.csv einzugsgebiete_aktuell.csv
-          mv "Prämien_CH.csv" "praemien_aktuell.csv"
+          [ -f "Prämien_CH.csv" ] && mv "Prämien_CH.csv" "praemien_aktuell.csv"
+
+          # Sperre: ohne vollständigen Datensatz nichts überschreiben
+          for pflicht in praemien_aktuell.csv versicherer.xlsx; do
+            [ -s "$pflicht" ] || { echo "::error::$pflicht fehlt – bestehende Rohdaten bleiben unverändert."; exit 1; }
+          done
+          ls praemienregionen-*.xlsx >/dev/null 2>&1 || { echo "::error::Prämienregionen fehlen – bestehende Rohdaten bleiben unverändert."; exit 1; }
+          [ "$(ls praemien_20*.csv 2>/dev/null | wc -l)" -ge 5 ] || { echo "::error::Zu wenige Archivjahre – bestehende Rohdaten bleiben unverändert."; exit 1; }
+
+          # Prüfsumme über den Inhalt; nur bei Änderungen hochladen
+          sha256sum *.csv *.xlsx | sort -k2 > pruefsumme.txt
+          echo "Neues Prämienjahr: $(head -2 praemien_aktuell.csv | tail -1 | cut -d, -f4)"
           for f in *.csv; do zip -q -9 "$f.zip" "$f" && rm "$f"; done
           ls -la
+          REPO="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
           git init -q -b rohdaten
           git config user.name "praemienradar-bot"
           git config user.email "actions@users.noreply.github.com"
+          if git fetch -q --depth 1 "$REPO" rohdaten 2>/dev/null && git show FETCH_HEAD:pruefsumme.txt 2>/dev/null | cmp -s - pruefsumme.txt; then
+            echo "Rohdaten unverändert – nichts zu tun."
+            exit 0
+          fi
           git add -A
           git commit -q -m "Rohdaten $(date +%F)"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" rohdaten
+          git push -f "$REPO" rohdaten
+          echo "Rohdaten aktualisiert."
