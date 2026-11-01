@@ -188,7 +188,7 @@ def baue(roh: Path):
     for (kt, reg), g in df.groupby(["kt", "reg"]):
         listen, idx = [], {}
         daten = {}
-        g = g.sort_values("pr")
+        g = g.sort_values(["pr", "nr", "typ", "tarif"], kind="mergesort")
         for (jahr, akl, u, fr), h in g.groupby(["jahr", "akl", "u", "fr"]):
             zeilen, gesehen = [], set()
             for r in h.itertuples():
