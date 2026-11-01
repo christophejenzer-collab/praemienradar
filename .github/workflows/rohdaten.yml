@@ -22,10 +22,21 @@ jobs:
           hole https://www.priminfo.admin.ch/downloads/praemienregionen_2026.xlsx praemienregionen-2026.xlsx
           hole https://www.priminfo.admin.ch/downloads/zugelassene-krankenversicherer-2026-10.xlsx versicherer.xlsx
 
-          curl -fsSL "https://ckan.opendata.swiss/api/3/action/package_show?id=health-insurance-premiums" -o ckan.json
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
+          for api in "https://ckan.opendata.swiss/api/3/action/package_show?id=health-insurance-premiums" \
+                     "https://opendata.swiss/api/3/action/package_show?id=health-insurance-premiums" \
+                     "https://ckan.opendata.swiss/api/3/action/package_search?q=Krankenversicherungspr%C3%A4mien"; do
+            if curl -fsSL --retry 2 -A "$UA" -H "Accept: application/json" -o ckan.json "$api"; then echo "API OK $api"; break; else echo "API FEHLT $api"; fi
+          done
+          [ -s ckan.json ] || { echo "Keine CKAN-Antwort"; echo '{"result":{"resources":[]}}' > ckan.json; }
           python3 - <<'EOF'
           import json, subprocess
-          res = json.load(open("ckan.json"))["result"]["resources"]
+          d = json.load(open("ckan.json"))["result"]
+          if "results" in d:
+              d = next((x for x in d["results"] if "premium" in x.get("name","") or "praem" in x.get("name","")), {"resources": []})
+              print("PAKET", d.get("name"))
+          res = d["resources"]
+          UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
           for r in res:
               name = r.get("name")
               if isinstance(name, dict):
@@ -34,13 +45,16 @@ jobs:
               print("RES", name, url, r.get("modified") or r.get("last_modified") or r.get("issued"))
               if name and (name.lower().endswith(".csv") and "_ch" in name.lower() and "pr" in name.lower()
                            or name.startswith("Archiv_Praemien_") or name.startswith("Erläuterungen")):
-                  subprocess.run(["curl", "-fsSL", "--retry", "3", "-o", name, url])
+                  rc = subprocess.run(["curl", "-fsSL", "--retry", "3", "-A", UA, "-o", name, url]).returncode
+                  print("DL", "OK" if rc == 0 else f"FEHLT({rc})", name)
           EOF
           ls -la
 
       - name: Grosse CSV packen und in Branch rohdaten pushen
+        if: always()
         run: |
           cd roh
+          [ -d . ] && ls -la
           for f in *.csv; do [ -f "$f" ] && zip -q -9 "$f.zip" "$f" && rm "$f"; done
           git init -q -b rohdaten
           git config user.name "praemienradar-bot"
