@@ -81,13 +81,13 @@ jobs:
               mkdir -p "x$j" && unzip -q -o "$z" -d "x$j"
               # verschachtelte ZIPs ebenfalls entpacken
               find "x$j" -iname '*.zip' -exec unzip -q -o {} -d "x$j" \;
-              f=$(find "x$j" -iname 'pr*mien*ch*.csv' ! -iname '*eu*' | head -1)
+              f=$(find "x$j" -iname 'pr*mien*ch*.csv' ! -iname '*eu*' | LC_ALL=C sort | head -1)
               if [ -z "$f" ]; then
-                x=$(find "x$j" -iname 'pr*mien*ch*.xls*' ! -iname '*eu*' | head -1)
+                x=$(find "x$j" -iname 'pr*mien*ch*.xls*' ! -iname '*eu*' | LC_ALL=C sort | head -1)
                 [ -n "$x" ] && python3 -c "import pandas as pd,sys; pd.read_excel(sys.argv[1],dtype=str).to_csv(sys.argv[2],index=False)" "$x" "x$j/conv.csv" && f="x$j/conv.csv"
               fi
               [ -n "$f" ] && cp "$f" "praemien_$j.csv" && echo "  -> praemien_$j.csv aus $f"
-              e=$(find "x$j" -iname 'einzugsgebiete*.csv' | head -1)
+              e=$(find "x$j" -iname 'einzugsgebiete*.csv' | LC_ALL=C sort | head -1)
               [ -n "$e" ] && cp "$e" "einzugsgebiete_$j.csv"
               rm -rf "x$j"
             fi
